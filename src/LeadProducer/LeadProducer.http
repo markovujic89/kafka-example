@@ -1,0 +1,6 @@
+@LeadProducer_HostAddress = http://localhost:5190
+
+GET {{LeadProducer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
