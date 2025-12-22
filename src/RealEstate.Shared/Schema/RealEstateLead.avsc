@@ -1,0 +1,50 @@
+﻿{
+  "type": "record",
+  "name": "RealEstateLead",
+  "namespace": "RealEstate.Shared",
+  "fields": [
+    {
+      "name": "LeadId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "Address",
+      "type": "string"
+    },
+    {
+      "name": "LeadType",
+      "type": {
+        "type": "enum",
+        "name": "LeadType",
+        "symbols": [
+          "Rent",
+          "Buy"
+        ]
+      }
+    },
+    {
+      "name": "RealEstateType",
+      "type": {
+        "type": "enum",
+        "name": "RealEstateType",
+        "symbols": [
+          "House",
+          "Apartment",
+          "Land"
+        ]
+      }
+    },
+    {
+      "name": "Price",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 18,
+        "scale": 2
+      }
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
 using Confluent.Kafka;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
 using LeadProducer.Helppers;
 using LeadProducer.Services.Interfaces;
 using Microsoft.Extensions.Options;
@@ -10,7 +12,8 @@ namespace LeadProducer.Services;
 public class KafkaProducerService : IKafkaProducerService
 {
     private readonly string _topic;
-    private readonly IProducer<string, string> _producer;
+    private readonly IProducer<string, RealEstateLead> _producer;
+    private readonly ISchemaRegistryClient _schemaRegistry;
 
     public KafkaProducerService(IOptions<KafkaSettings> settings)
     {
@@ -20,20 +23,33 @@ public class KafkaProducerService : IKafkaProducerService
         {
             BootstrapServers = settings.Value.BootstrapServers
         };
+        
+        _schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig
+        {
+            Url = settings.Value.SchemaRegistryUrl
+        });
 
-        _producer = new ProducerBuilder<string, string>(config).Build();
+        _producer = new ProducerBuilder<string, RealEstateLead>(config)
+            .SetValueSerializer(
+                new AvroSerializer<RealEstateLead>(_schemaRegistry))
+            .Build();
     }
 
     public async Task ProduceAsync(RealEstateLead lead)
     {
-        var messageValue = JsonSerializer.Serialize(lead);
-
         var output = await _producer.ProduceAsync(
             _topic,
-            new Message<string, string>
+            new Message<string, RealEstateLead>
             {
                 Key = lead.LeadId.ToString(),
-                Value = messageValue
+                Value = new RealEstateLead
+                {
+                    LeadId = lead.LeadId,
+                    Address = lead.Address,
+                    RealEstateType = lead.RealEstateType,
+                    LeadType = lead.LeadType,
+                    Price = lead.Price
+                }
             });
     }
 }

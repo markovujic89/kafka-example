@@ -23,8 +23,8 @@ public class LeadsController : ControllerBase
         {
             LeadId = Guid.NewGuid(),
             Address = request.Address,
-            RealEstateType = request.RealEstateType,
-            LeadType = request.LeadType,
+            RealEstateType = (RealEstateType)request.RealEstateType,
+            LeadType = (LeadType)request.LeadType,
             Price = request.Price
         };
         

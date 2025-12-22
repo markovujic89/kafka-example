@@ -1,5 +1,8 @@
 ﻿using System.Text.Json;
 using Confluent.Kafka;
+using Confluent.Kafka.SyncOverAsync;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
 using ConsumerY.Helppers;
 using Microsoft.Extensions.Options;
 using RealEstate.Shared;
@@ -22,14 +25,29 @@ public class KafkaConsumerService : BackgroundService
     {
         return Task.Run(() =>
         {
-            var config = new ConsumerConfig
+            var consumerConfig = new ConsumerConfig
             {
                 BootstrapServers = _settings.BootstrapServers,
                 GroupId = _settings.GroupId,
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                AutoOffsetReset = AutoOffsetReset.Earliest,
+                EnableAutoCommit = true
             };
 
-            using var consumer = new ConsumerBuilder<string, string>(config).Build();
+            var schemaRegistryConfig = new SchemaRegistryConfig
+            {
+                Url = _settings.SchemaRegistryUrl
+            };
+
+            using var schemaRegistry =
+                new CachedSchemaRegistryClient(schemaRegistryConfig);
+
+            using var consumer =
+                new ConsumerBuilder<string, RealEstateLead>(consumerConfig)
+                    .SetValueDeserializer(
+                        new AvroDeserializer<RealEstateLead>(schemaRegistry)
+                            .AsSyncOverAsync())
+                    .Build();
+
             consumer.Subscribe(_settings.Topic);
 
             try
@@ -38,16 +56,18 @@ public class KafkaConsumerService : BackgroundService
                 {
                     var result = consumer.Consume(stoppingToken);
 
-                    var lead = JsonSerializer.Deserialize<RealEstateLead>(result.Message.Value);
+                    var lead = result.Message.Value; // ALREADY deserialized
 
                     _logger.LogInformation(
-                        $"Company Y received lead: {lead!.LeadId}, {lead.Address}, price {lead.Price}"
+                        "Company X received lead: {LeadId}, {Address}, price {Price}",
+                        lead.LeadId,
+                        lead.Address,
+                        lead.Price
                     );
                 }
             }
             catch (OperationCanceledException)
             {
-                // Expected when stoppingToken is triggered
                 _logger.LogInformation("Kafka consumer is shutting down gracefully...");
             }
             finally
